@@ -8,140 +8,144 @@ async function loadLang(lang){
     applyTranslations(lang);
     currentLang=lang;
 }
-
 function applyTranslations(lang){
     const t=translations[lang];
     document.getElementById('title').innerText=t.title;
     document.getElementById('labelLang').innerText=t.labelLang;
+    document.getElementById('accountSectionTitle').innerText=t.accountSectionTitle;
+    document.getElementById('selectAccountTitle').innerText=t.selectAccountTitle;
+    document.getElementById('transactionSectionTitle').innerText=t.transactionSectionTitle;
     document.getElementById('profitTitle').innerText=t.profitTitle;
     document.getElementById('weeklyProfitTitle').innerText=t.weeklyProfitTitle;
     document.getElementById('monthlyProfitTitle').innerText=t.monthlyProfitTitle;
-    document.getElementById('saveBtn').innerText=t.saveBtn;
+    document.getElementById('createAccountBtn').innerText=t.createAccountBtn;
+    document.getElementById('addTransactionBtn').innerText=t.addTransactionBtn;
     document.getElementById('exportPDFBtn').innerText=t.exportPDFBtn;
     document.getElementById('cropName').placeholder=t.cropName;
-    document.getElementById('cropType').placeholder=t.cropType;
-    document.getElementById('seedPrice').placeholder=t.seedPrice;
-    document.getElementById('travelCost').placeholder=t.travelCost;
-    document.getElementById('harvestAmount').placeholder=t.harvestAmount;
-    document.getElementById('harvestPrice').placeholder=t.harvestPrice;
-    document.getElementById('plantingDate').placeholder=t.plantingDate;
+    document.getElementById('location').placeholder=t.location;
+    document.getElementById('description').placeholder=t.description;
+    document.getElementById('amount').placeholder=t.amount;
 }
-
 langSelect.addEventListener('change',(e)=>loadLang(e.target.value));
 loadLang(currentLang);
 
-// CRUD
-const saveBtn=document.getElementById('saveBtn');
-const profitResults=document.getElementById('profitResults');
+// LocalStorage helper
+function getAccounts(){return JSON.parse(localStorage.getItem('accounts')||'[]');}
+function saveAccounts(data){localStorage.setItem('accounts',JSON.stringify(data));}
+
+const accountSelect=document.getElementById('accountSelect');
+const createAccountBtn=document.getElementById('createAccountBtn');
+const addTransactionBtn=document.getElementById('addTransactionBtn');
+const accountResults=document.getElementById('accountResults');
 const exportPDFBtn=document.getElementById('exportPDFBtn');
-let editingIndex=null;
 
-function calculateProfit(seedPrice,travelCost,harvestAmount,harvestPrice){
-    return parseFloat(harvestAmount)*parseFloat(harvestPrice)- (parseFloat(seedPrice)+parseFloat(travelCost));
-}
+let editingAccount=null;
 
-function getData(){return JSON.parse(localStorage.getItem('farmData')||'[]');}
-function saveDataToStorage(data){localStorage.setItem('farmData',JSON.stringify(data));}
+// Create account
+createAccountBtn.addEventListener('click',()=>{
+    const cropName=document.getElementById('cropName').value.trim();
+    const location=document.getElementById('location').value.trim();
+    if(!cropName||!location) return alert('Lengkapi nama tanaman & lokasi');
+    let accounts=getAccounts();
+    if(accounts.find(a=>a.cropName===cropName && a.location===location)){
+        alert('Akun sudah ada'); return;
+    }
+    accounts.push({cropName,location,transactions:[]});
+    saveAccounts(accounts);
+    loadAccounts();
+});
 
-function displayResults(){
-    const data=getData();
-    const grouped={};
-    data.forEach(item=>{
-        if(!grouped[item.cropType]) grouped[item.cropType]=[];
-        grouped[item.cropType].push(item);
+// Load account dropdown
+function loadAccounts(){
+    const accounts=getAccounts();
+    accountSelect.innerHTML='';
+    accounts.forEach((a,idx)=>{
+        const opt=document.createElement('option');
+        opt.value=idx;
+        opt.text=`${a.cropName} - ${a.location}`;
+        accountSelect.add(opt);
     });
-    profitResults.innerHTML='';
-    for(const type in grouped){
+    displayResults();
+}
+loadAccounts();
+
+// Add transaction
+addTransactionBtn.addEventListener('click',()=>{
+    const idx=parseInt(accountSelect.value);
+    if(isNaN(idx)) return alert('Pilih akun dulu');
+    const type=document.getElementById('transactionType').value;
+    const description=document.getElementById('description').value.trim();
+    const amount=parseFloat(document.getElementById('amount').value);
+    const date=document.getElementById('date').value;
+    if(!description||!amount||!date) return alert('Lengkapi semua transaksi');
+    const accounts=getAccounts();
+    accounts[idx].transactions.push({type,description,amount,date});
+    saveAccounts(accounts);
+    displayResults();
+    clearTransactionForm();
+});
+
+// Display results
+function displayResults(){
+    const accounts=getAccounts();
+    accountResults.innerHTML='';
+    accounts.forEach((a,accIdx)=>{
+        let profit=a.transactions.reduce((sum,t)=>sum+ (t.type==='income'?t.amount:-t.amount),0);
         const header=document.createElement('h3');
-        header.innerText=`${type} (${grouped[type].length} entries)`;
-        profitResults.appendChild(header);
-        grouped[type].forEach((item,idx)=>{
+        header.innerText=`${a.cropName} - ${a.location} | Profit: ${profit} IDR`;
+        accountResults.appendChild(header);
+        a.transactions.forEach((t,txIdx)=>{
             const div=document.createElement('div');
             div.classList.add('result-item');
             div.innerHTML=`
-            <span>${idx+1}. ${item.cropName} - ${item.profit} IDR (Planted: ${item.plantingDate})</span>
-            <div>
-                <button class="editBtn" onclick="editData('${item.timestamp}')">${translations[currentLang].editBtn}</button>
-                <button onclick="deleteData('${item.timestamp}')">${translations[currentLang].deleteBtn}</button>
-            </div>`;
-            profitResults.appendChild(div);
+                <span>${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR</span>
+                <div>
+                    <button class="editBtn" onclick="editTransaction(${accIdx},${txIdx})">${translations[currentLang].editBtn}</button>
+                    <button onclick="deleteTransaction(${accIdx},${txIdx})">${translations[currentLang].deleteBtn}</button>
+                </div>`;
+            accountResults.appendChild(div);
         });
-    }
+    });
     updateCharts();
 }
 
-function saveData(){
-    const cropName=document.getElementById('cropName').value;
-    const cropType=document.getElementById('cropType').value;
-    const seedPrice=document.getElementById('seedPrice').value;
-    const travelCost=document.getElementById('travelCost').value;
-    const harvestAmount=document.getElementById('harvestAmount').value;
-    const harvestPrice=document.getElementById('harvestPrice').value;
-    const plantingDate=document.getElementById('plantingDate').value;
-
-    if(!cropName||!cropType||!seedPrice||!travelCost||!harvestAmount||!harvestPrice||!plantingDate){
-        return alert('Lengkapi semua data!');
-    }
-
-    const profit=calculateProfit(seedPrice,travelCost,harvestAmount,harvestPrice);
-    let farmData=getData();
-    const record={cropName,cropType,seedPrice,travelCost,harvestAmount,harvestPrice,plantingDate,profit,timestamp:new Date().getTime()};
-
-    if(editingIndex!==null){
-        const idx=farmData.findIndex(r=>r.timestamp===editingIndex);
-        if(idx>-1) farmData[idx]=record;
-        editingIndex=null;
-    }else{
-        farmData.push(record);
-    }
-
-    saveDataToStorage(farmData);
-    displayResults();
-    clearForm();
+// Edit/Delete transaction
+function editTransaction(accIdx,txIdx){
+    const accounts=getAccounts();
+    const t=accounts[accIdx].transactions[txIdx];
+    document.getElementById('transactionType').value=t.type;
+    document.getElementById('description').value=t.description;
+    document.getElementById('amount').value=t.amount;
+    document.getElementById('date').value=t.date;
+    editingAccount={accIdx,txIdx};
 }
-
-function editData(timestamp){
-    const data=getData();
-    const item=data.find(r=>r.timestamp==timestamp);
-    if(!item) return;
-    document.getElementById('cropName').value=item.cropName;
-    document.getElementById('cropType').value=item.cropType;
-    document.getElementById('seedPrice').value=item.seedPrice;
-    document.getElementById('travelCost').value=item.travelCost;
-    document.getElementById('harvestAmount').value=item.harvestAmount;
-    document.getElementById('harvestPrice').value=item.harvestPrice;
-    document.getElementById('plantingDate').value=item.plantingDate;
-    editingIndex=timestamp;
-}
-
-function deleteData(timestamp){
-    let data=getData();
-    data=data.filter(r=>r.timestamp!=timestamp);
-    saveDataToStorage(data);
+function deleteTransaction(accIdx,txIdx){
+    const accounts=getAccounts();
+    accounts[accIdx].transactions.splice(txIdx,1);
+    saveAccounts(accounts);
     displayResults();
 }
-
-function clearForm(){
-    document.getElementById('cropName').value='';
-    document.getElementById('cropType').value='';
-    document.getElementById('seedPrice').value='';
-    document.getElementById('travelCost').value='';
-    document.getElementById('harvestAmount').value='';
-    document.getElementById('harvestPrice').value='';
-    document.getElementById('plantingDate').value='';
+function clearTransactionForm(){
+    document.getElementById('description').value='';
+    document.getElementById('amount').value='';
+    document.getElementById('date').value='';
+    editingAccount=null;
 }
 
 // Charts
 let weeklyChart,monthlyChart;
 function updateCharts(){
-    const data=getData();
+    const accounts=getAccounts();
     const weeklyProfits={},monthlyProfits={};
-    data.forEach(item=>{
-        const date=new Date(item.plantingDate);
-        const weekKey=`${date.getFullYear()}-W${Math.ceil((date.getDate()+1)/7)}`;
-        const monthKey=`${date.getFullYear()}-${date.getMonth()+1}`;
-        weeklyProfits[weekKey]=(weeklyProfits[weekKey]||0)+item.profit;
-        monthlyProfits[monthKey]=(monthlyProfits[monthKey]||0)+item.profit;
+    accounts.forEach(a=>{
+        a.transactions.forEach(t=>{
+            const date=new Date(t.date);
+            const weekKey=`${date.getFullYear()}-W${Math.ceil((date.getDate()+1)/7)}`;
+            const monthKey=`${date.getFullYear()}-${date.getMonth()+1}`;
+            const amt=t.type==='income'?t.amount:-t.amount;
+            weeklyProfits[weekKey]=(weeklyProfits[weekKey]||0)+amt;
+            monthlyProfits[monthKey]=(monthlyProfits[monthKey]||0)+amt;
+        });
     });
     const weeklyLabels=Object.keys(weeklyProfits).sort();
     const weeklyData=weeklyLabels.map(l=>weeklyProfits[l]);
@@ -162,33 +166,26 @@ function updateCharts(){
 // Export PDF
 const { jsPDF } = window.jspdf;
 exportPDFBtn.addEventListener('click',()=>{
-    const data=getData();
-    if(data.length===0) return alert('No data to export');
-    const grouped={};
-    data.forEach(item=>{
-        if(!grouped[item.cropType]) grouped[item.cropType]=[];
-        grouped[item.cropType].push(item);
-    });
+    const accounts=getAccounts();
+    if(accounts.length===0) return alert('No data to export');
     const doc=new jsPDF();
     doc.setFontSize(16);
     doc.setTextColor(0,255,255);
     doc.text('Farm Profit Report',105,20,null,null,'center');
     doc.setFontSize(12);
     let y=30;
-    for(const type in grouped){
+    accounts.forEach(a=>{
+        let profit=a.transactions.reduce((sum,t)=>sum+(t.type==='income'?t.amount:-t.amount),0);
         doc.setTextColor(0,255,255);
-        doc.text(type,10,y);
+        doc.text(`${a.cropName} - ${a.location} | Profit: ${profit} IDR`,10,y);
         y+=6;
-        grouped[type].forEach((item,idx)=>{
+        a.transactions.forEach((t,idx)=>{
             doc.setTextColor(255,255,255);
-            doc.text(`${idx+1}. ${item.cropName} | Profit: ${item.profit} IDR | Planted: ${item.plantingDate}`,10,y);
+            doc.text(`${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR`,10,y);
             y+=6;
             if(y>280){doc.addPage(); y=20;}
         });
         y+=4;
-    }
+    });
     doc.save('Farm_Profit_Report.pdf');
 });
-
-saveBtn.addEventListener('click',saveData);
-displayResults();
