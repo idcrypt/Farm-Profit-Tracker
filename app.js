@@ -1,333 +1,307 @@
-// ===== Farm Profit Tracker App =====
+document.addEventListener("DOMContentLoaded", () => {
+  // ==============================
+  // GLOBAL VAR
+  // ==============================
+  let accounts = JSON.parse(localStorage.getItem("accounts")) || [];
+  let currentAccountIndex = null;
+  let weeklyChart, monthlyChart;
+  let translations = {};
+  let currentLang = "en";
 
-// Global state
-let currentLang = 'id';
-let translations = {};
-let weeklyChart = null;
-let monthlyChart = null;
-let editingTransaction = null; // { accId, txId } or null
+  // ==============================
+  // ELEMENTS
+  // ==============================
+  const accountForm = document.getElementById("accountForm");
+  const cropNameInput = document.getElementById("cropName");
+  const locationInput = document.getElementById("location");
+  const accountSelect = document.getElementById("accountSelect");
+  const accountsList = document.getElementById("accountsList");
 
-// ===== Utilities =====
-const $ = id => document.getElementById(id);
+  const transactionForm = document.getElementById("transactionForm");
+  const dateInput = document.getElementById("dateInput");
+  const descriptionInput = document.getElementById("description");
+  const amountInput = document.getElementById("amount");
+  const typeSelect = document.getElementById("type");
 
-function getAccounts() {
-  return JSON.parse(localStorage.getItem("accounts") || "[]");
-}
-function saveAccounts(accounts) {
-  localStorage.setItem("accounts", JSON.stringify(accounts));
-}
-function formatCurrency(num) {
-  if (currentLang === 'id') {
-    return "Rp " + new Intl.NumberFormat("id-ID").format(num) + ",-";
-  } else {
-    return "IDR " + new Intl.NumberFormat("en-US").format(num) + ",-";
+  const resultsDiv = document.getElementById("results");
+  const exportPDFBtn = document.getElementById("exportPDFBtn");
+  const startDateInput = document.getElementById("startDate");
+  const endDateInput = document.getElementById("endDate");
+
+  const langSelect = document.getElementById("langSelect");
+
+  // ==============================
+  // HELPER
+  // ==============================
+  function saveAccounts() {
+    localStorage.setItem("accounts", JSON.stringify(accounts));
   }
-}
 
-// ===== Language Loader =====
-async function loadLang(lang) {
-  try {
-    const res = await fetch(`lang/${lang}.json`);
-    translations = await res.json();
-    currentLang = lang;
-    applyTranslations();
-  } catch (e) {
-    alert("Language file missing: " + lang);
-  }
-}
-
-function applyTranslations() {
-  const t = translations;
-  const setText = (id, key) => { if ($(id)) $(id).innerText = t[key] || key; };
-  const setPlaceholder = (id, key) => { if ($(id)) $(id).placeholder = t[key] || key; };
-
-  setText("title", "title");
-  setText("labelLang", "labelLang");
-  setText("accountSectionTitle", "accountSectionTitle");
-  setText("selectAccountTitle", "selectAccountTitle");
-  setText("transactionSectionTitle", "transactionSectionTitle");
-  setText("profitTitle", "profitTitle");
-  setText("weeklyProfitTitle", "weeklyProfitTitle");
-  setText("monthlyProfitTitle", "monthlyProfitTitle");
-  setText("createAccountBtn", "createAccountBtn");
-  setText("addTransactionBtn", "addTransactionBtn");
-  setText("exportPDFBtn", "exportPDFBtn");
-
-  setPlaceholder("cropName", "cropName");
-  setPlaceholder("location", "location");
-  setPlaceholder("description", "description");
-  setPlaceholder("amount", "amount");
-
-  // Update transaction type options
-  const txType = $("transactionType");
-  if (txType) {
-    txType.innerHTML = `
-      <option value="income">${t.optIncome}</option>
-      <option value="expense">${t.optExpense}</option>
-    `;
-  }
-}
-
-// ===== Event: Language Switch =====
-const langSelect = $("langSelect");
-if (langSelect) {
-  langSelect.addEventListener("change", e => loadLang(e.target.value));
-}
-
-// ===== Account Creation =====
-const accountForm = $("accountForm");
-accountForm.addEventListener("submit", e => {
-  e.preventDefault();
-  const crop = $("cropName").value.trim();
-  const loc = $("location").value.trim();
-  if (!crop || !loc) return alert("Fill crop & location");
-
-  let accounts = getAccounts();
-  if (accounts.find(a => a.cropName === crop && a.location === loc)) {
-    alert("Account already exists");
-    return;
-  }
-  accounts.push({ id: Date.now(), cropName: crop, location: loc, transactions: [] });
-  saveAccounts(accounts);
-  $("cropName").value = "";
-  $("location").value = "";
-  loadAccounts();
-});
-
-// ===== Transaction Add/Edit =====
-const transactionForm = $("transactionForm");
-transactionForm.addEventListener("submit", e => {
-  e.preventDefault();
-  const accId = parseInt($("transactionAccount").value);
-  if (!accId) return alert("Select account");
-  const type = $("transactionType").value;
-  const amount = parseFloat($("amount").value);
-  const desc = $("description").value;
-  const date = $("transactionDate").value;
-  if (!amount || !date) return alert("Fill amount and date");
-
-  let accounts = getAccounts();
-  const acc = accounts.find(a => a.id === accId);
-  if (!acc) return;
-
-  if (editingTransaction) {
-    const tx = acc.transactions.find(t => t.id === editingTransaction.txId);
-    if (tx) {
-      tx.type = type;
-      tx.amount = amount;
-      tx.description = desc;
-      tx.date = date;
+  function formatCurrency(num) {
+    if (currentLang === "id") {
+      return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(num);
+    } else {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(num);
     }
-    editingTransaction = null;
-  } else {
-    acc.transactions.push({ id: Date.now(), type, amount, description: desc, date });
   }
 
-  saveAccounts(accounts);
-  transactionForm.reset();
-  displayResults();
-});
+  // ==============================
+  // LOAD ACCOUNTS
+  // ==============================
+  function loadAccounts() {
+    if (!accountSelect || !accountsList) return;
+    accountSelect.innerHTML = "";
+    accountsList.innerHTML = "";
 
-// ===== Load Accounts into UI =====
-function loadAccounts() {
-  const accounts = getAccounts();
-  const list = $("accountsList");
-  const select = $("transactionAccount");
-  list.innerHTML = "";
-  select.innerHTML = "";
+    accounts.forEach((acc, i) => {
+      let option = document.createElement("option");
+      option.value = i;
+      option.textContent = acc.name + " - " + acc.location;
+      accountSelect.appendChild(option);
 
-  accounts.forEach(a => {
-    const li = document.createElement("li");
-    li.textContent = `${a.cropName} - ${a.location}`;
-    list.appendChild(li);
+      let div = document.createElement("div");
+      div.textContent = acc.name + " (" + acc.location + ")";
+      accountsList.appendChild(div);
+    });
 
-    const opt = document.createElement("option");
-    opt.value = a.id;
-    opt.textContent = `${a.cropName} - ${a.location}`;
-    select.appendChild(opt);
-  });
-  displayResults();
-}
+    if (accounts.length > 0) {
+      if (currentAccountIndex === null) currentAccountIndex = 0;
+      accountSelect.value = currentAccountIndex;
+      displayResults();
+    } else {
+      resultsDiv.innerHTML = "";
+      if (weeklyChart) weeklyChart.destroy();
+      if (monthlyChart) monthlyChart.destroy();
+    }
+  }
 
-// ===== Display Accounts & Transactions =====
-function displayResults() {
-  const container = $("resultsContainer");
-  container.innerHTML = "";
-  const accounts = getAccounts();
+  // ==============================
+  // DISPLAY RESULTS
+  // ==============================
+  function displayResults() {
+    if (currentAccountIndex === null) return;
+    let acc = accounts[currentAccountIndex];
+    if (!acc) return;
 
-  accounts.forEach(a => {
-    const div = document.createElement("div");
-    div.className = "account-result";
+    let income = acc.transactions.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
+    let expense = acc.transactions.filter(t => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+    let profit = income - expense;
 
-    let profit = a.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
+    let html = `<h3>${translations["profitTitle"] || "Profit"}</h3>`;
+    html += `<p>Income: ${formatCurrency(income)}</p>`;
+    html += `<p>Expense: ${formatCurrency(expense)}</p>`;
+    html += `<p><b>${profit >= 0 ? "Profit" : "Loss"}: ${formatCurrency(profit)}</b></p>`;
 
-    div.innerHTML = `
-      <h3>${a.cropName} - ${a.location}</h3>
-      <p><strong>${translations.profitTitle}:</strong> ${formatCurrency(profit)}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th><th>Type</th><th>${translations.description}</th><th>${translations.amount}</th><th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${a.transactions.map(t => `
-            <tr>
-              <td>${t.date}</td>
-              <td>${t.type === "income" ? translations.optIncome : translations.optExpense}</td>
-              <td>${t.description}</td>
-              <td>${formatCurrency(t.amount)}</td>
-              <td>
-                <button onclick="editTransaction(${a.id},${t.id})">${translations.editBtn}</button>
-                <button onclick="deleteTransaction(${a.id},${t.id})">${translations.deleteBtn}</button>
-              </td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    `;
-    container.appendChild(div);
-  });
+    // Transactions List
+    html += "<table border='1' width='100%' style='margin-top:10px;text-align:left;'>";
+    html += "<tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Action</th></tr>";
+    acc.transactions.forEach((t, idx) => {
+      html += `<tr>
+        <td>${t.date}</td>
+        <td>${t.description}</td>
+        <td>${t.type}</td>
+        <td>${formatCurrency(t.amount)}</td>
+        <td>
+          <button onclick="editTransaction(${idx})">${translations["editBtn"] || "Edit"}</button>
+          <button onclick="deleteTransaction(${idx})">${translations["deleteBtn"] || "Delete"}</button>
+        </td>
+      </tr>`;
+    });
+    html += "</table>";
 
-  updateCharts();
-}
+    resultsDiv.innerHTML = html;
 
-// ===== Edit/Delete Transactions =====
-window.editTransaction = function(accId, txId) {
-  const accounts = getAccounts();
-  const acc = accounts.find(a => a.id === accId);
-  const tx = acc.transactions.find(t => t.id === txId);
-  if (!tx) return;
+    updateCharts(acc.transactions);
+  }
 
-  $("transactionAccount").value = accId;
-  $("transactionType").value = tx.type;
-  $("amount").value = tx.amount;
-  $("description").value = tx.description;
-  $("transactionDate").value = tx.date;
-  editingTransaction = { accId, txId };
-};
+  // ==============================
+  // UPDATE CHARTS
+  // ==============================
+  function updateCharts(transactions) {
+    const weekData = {};
+    const monthData = {};
 
-window.deleteTransaction = function(accId, txId) {
-  if (!confirm("Delete transaction?")) return;
-  let accounts = getAccounts();
-  const acc = accounts.find(a => a.id === accId);
-  acc.transactions = acc.transactions.filter(t => t.id !== txId);
-  saveAccounts(accounts);
-  displayResults();
-};
+    transactions.forEach(t => {
+      let d = new Date(t.date);
+      let week = `${d.getFullYear()}-W${Math.ceil(d.getDate() / 7)}`;
+      let month = `${d.getFullYear()}-${d.getMonth() + 1}`;
 
-// ===== Charts =====
-function updateCharts() {
-  const accounts = getAccounts();
-  const allTx = accounts.flatMap(a => a.transactions);
+      let val = t.type === "income" ? t.amount : -t.amount;
+      weekData[week] = (weekData[week] || 0) + val;
+      monthData[month] = (monthData[month] || 0) + val;
+    });
 
-  // weekly
-  const weekly = {};
-  allTx.forEach(t => {
-    const week = getWeek(new Date(t.date));
-    weekly[week] = (weekly[week] || 0) + (t.type === "income" ? t.amount : -t.amount);
-  });
+    // Weekly
+    const weekLabels = Object.keys(weekData);
+    const weekVals = Object.values(weekData);
 
-  const ctxW = $("weeklyChart");
-  if (ctxW) {
     if (weeklyChart) weeklyChart.destroy();
-    weeklyChart = new Chart(ctxW.getContext("2d"), {
-      type: "bar",
-      data: {
-        labels: Object.keys(weekly),
-        datasets: [{ label: translations.weeklyProfitTitle, data: Object.values(weekly), backgroundColor: "#0ff" }]
-      }
-    });
-  }
-
-  // monthly
-  const monthly = {};
-  allTx.forEach(t => {
-    const month = t.date.slice(0, 7);
-    monthly[month] = (monthly[month] || 0) + (t.type === "income" ? t.amount : -t.amount);
-  });
-
-  const ctxM = $("monthlyChart");
-  if (ctxM) {
-    if (monthlyChart) monthlyChart.destroy();
-    monthlyChart = new Chart(ctxM.getContext("2d"), {
+    const ctxW = document.getElementById("weeklyChart").getContext("2d");
+    weeklyChart = new Chart(ctxW, {
       type: "line",
-      data: {
-        labels: Object.keys(monthly),
-        datasets: [{ label: translations.monthlyProfitTitle, data: Object.values(monthly), borderColor: "#f0f", fill: false }]
+      data: { labels: weekLabels, datasets: [{ label: translations["weeklyProfitTitle"] || "Weekly Profit", data: weekVals, borderColor: "lime", fill: false }] }
+    });
+
+    // Monthly
+    const monthLabels = Object.keys(monthData);
+    const monthVals = Object.values(monthData);
+
+    if (monthlyChart) monthlyChart.destroy();
+    const ctxM = document.getElementById("monthlyChart").getContext("2d");
+    monthlyChart = new Chart(ctxM, {
+      type: "bar",
+      data: { labels: monthLabels, datasets: [{ label: translations["monthlyProfitTitle"] || "Monthly Profit", data: monthVals, backgroundColor: "aqua" }] }
+    });
+  }
+
+  // ==============================
+  // EVENT LISTENERS
+  // ==============================
+  if (accountForm) {
+    accountForm.addEventListener("submit", e => {
+      e.preventDefault();
+      let acc = {
+        name: cropNameInput.value,
+        location: locationInput.value,
+        transactions: []
+      };
+      accounts.push(acc);
+      saveAccounts();
+      currentAccountIndex = accounts.length - 1;
+      loadAccounts();
+      accountForm.reset();
+    });
+  }
+
+  if (accountSelect) {
+    accountSelect.addEventListener("change", () => {
+      currentAccountIndex = parseInt(accountSelect.value);
+      displayResults();
+    });
+  }
+
+  if (transactionForm) {
+    transactionForm.addEventListener("submit", e => {
+      e.preventDefault();
+      if (currentAccountIndex === null) return;
+
+      let acc = accounts[currentAccountIndex];
+      let t = {
+        date: dateInput.value,
+        description: descriptionInput.value,
+        amount: parseFloat(amountInput.value),
+        type: typeSelect.value
+      };
+      acc.transactions.push(t);
+      saveAccounts();
+      displayResults();
+      transactionForm.reset();
+    });
+  }
+
+  if (exportPDFBtn) {
+    exportPDFBtn.addEventListener("click", () => {
+      if (currentAccountIndex === null) return;
+      let acc = accounts[currentAccountIndex];
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(`${acc.name} (${acc.location}) Report`, 20, 20);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+
+      let startDate = startDateInput.value ? new Date(startDateInput.value) : null;
+      let endDate = endDateInput.value ? new Date(endDateInput.value) : null;
+
+      let y = 40;
+      doc.text("Date | Description | Type | Amount", 20, y);
+      y += 10;
+
+      acc.transactions.forEach(t => {
+        let d = new Date(t.date);
+        if (startDate && d < startDate) return;
+        if (endDate && d > endDate) return;
+
+        doc.text(`${t.date} | ${t.description} | ${t.type} | ${formatCurrency(t.amount)}`, 20, y);
+        y += 10;
+        if (y > 270) { doc.addPage(); y = 20; }
+      });
+
+      let income = acc.transactions.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
+      let expense = acc.transactions.filter(t => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+      let profit = income - expense;
+
+      y += 10;
+      doc.text(`Total Income: ${formatCurrency(income)}`, 20, y); y += 10;
+      doc.text(`Total Expense: ${formatCurrency(expense)}`, 20, y); y += 10;
+      doc.text(`Final Profit/Loss: ${formatCurrency(profit)}`, 20, y);
+
+      doc.save("Farm_Report.pdf");
+    });
+  }
+
+  // ==============================
+  // LANGUAGE SWITCHER
+  // ==============================
+  function applyTranslations() {
+    Object.keys(translations).forEach(key => {
+      let el = document.getElementById(key);
+      if (el) {
+        if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+          el.placeholder = translations[key];
+        } else {
+          el.textContent = translations[key];
+        }
       }
     });
   }
-}
 
-function getWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return "W" + Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-}
+  async function loadLanguage(lang) {
+    try {
+      let res = await fetch(`${lang}.json`);
+      translations = await res.json();
+      currentLang = lang;
+      applyTranslations();
+      displayResults();
+    } catch (err) {
+      console.error("Error loading language:", err);
+    }
+  }
 
-// ===== Export PDF =====
-const { jsPDF } = window.jspdf;
-$("exportPDFBtn").addEventListener("click", () => {
-  const accounts = getAccounts();
-  if (!accounts.length) return alert("No data");
-
-  const start = $("startDate")?.value ? new Date($("startDate").value) : null;
-  const end = $("endDate")?.value ? new Date($("endDate").value) : null;
-
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text("Farm Profit Report", 105, 20, null, null, "center");
-  doc.setFontSize(12);
-  let y = 30;
-
-  accounts.forEach(a => {
-    const txs = a.transactions.filter(t => {
-      const d = new Date(t.date);
-      if (start && d < start) return false;
-      if (end && d > end) return false;
-      return true;
+  if (langSelect) {
+    langSelect.addEventListener("change", e => {
+      loadLanguage(e.target.value);
     });
-    if (!txs.length) return;
+  }
 
-    let profit = txs.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
+  // ==============================
+  // GLOBAL FUNCTIONS FOR EDIT/DELETE
+  // ==============================
+  window.editTransaction = function (idx) {
+    let acc = accounts[currentAccountIndex];
+    let t = acc.transactions[idx];
+    dateInput.value = t.date;
+    descriptionInput.value = t.description;
+    amountInput.value = t.amount;
+    typeSelect.value = t.type;
+    acc.transactions.splice(idx, 1);
+    saveAccounts();
+    displayResults();
+  };
 
-    doc.setFontSize(14);
-    doc.text(`${a.cropName} - ${a.location}`, 10, y);
-    y += 8;
+  window.deleteTransaction = function (idx) {
+    let acc = accounts[currentAccountIndex];
+    acc.transactions.splice(idx, 1);
+    saveAccounts();
+    displayResults();
+  };
 
-    doc.setFontSize(11);
-    doc.text("Date", 10, y);
-    doc.text("Type", 40, y);
-    doc.text(translations.description, 80, y);
-    doc.text(translations.amount, 170, y, { align: "right" });
-    y += 6;
-    doc.line(10, y, 200, y);
-    y += 4;
-
-    txs.forEach(t => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.text(t.date, 10, y);
-      doc.text(t.type === "income" ? translations.optIncome : translations.optExpense, 40, y);
-      doc.text(t.description, 80, y);
-      doc.text(formatCurrency(t.amount), 170, y, { align: "right" });
-      y += 6;
-    });
-
-    y += 4;
-    doc.line(10, y, 200, y);
-    y += 6;
-
-    doc.setFontSize(12);
-    doc.text(`${translations.profitTitle}: ${formatCurrency(profit)}`, 10, y);
-    y += 12;
-  });
-
-  doc.save("Farm_Profit_Report.pdf");
+  // ==============================
+  // INIT
+  // ==============================
+  loadAccounts();
+  loadLanguage("en");
 });
-
-// ===== Init =====
-loadLang(currentLang);
-loadAccounts();
