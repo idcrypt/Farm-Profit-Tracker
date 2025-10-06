@@ -21,9 +21,7 @@ input, select, button {
     background: #111;
     color: #0ff;
 }
-input::placeholder {
-    color: #0ff;
-}
+input::placeholder { color: #0ff; }
 button {
     background-color: #0ff;
     color: #111;
@@ -31,10 +29,7 @@ button {
     cursor: pointer;
     border: none;
 }
-button:hover {
-    background-color: #0ff;
-    box-shadow: 0 0 10px #0ff;
-}
+button:hover { box-shadow: 0 0 10px #0ff; }
 .results-section {
     margin-top: 20px;
     background-color: #111;
@@ -57,9 +52,5 @@ button:hover {
     border-radius: 4px;
     cursor: pointer;
 }
-.result-item button.editBtn {
-    background-color: #00f;
-}
-.chart-section {
-    margin-top: 30px;
-}
+.result-item button.editBtn { background-color: #00f; }
+.chart-section { margin-top: 30px; }
