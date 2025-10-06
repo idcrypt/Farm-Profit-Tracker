@@ -1,0 +1,65 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #0a0a0a;
+    color: #fff;
+    padding: 20px;
+}
+.container {
+    max-width: 700px;
+    margin: auto;
+    background: #111;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #0ff;
+}
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #0ff;
+    background: #111;
+    color: #0ff;
+}
+input::placeholder {
+    color: #0ff;
+}
+button {
+    background-color: #0ff;
+    color: #111;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+}
+button:hover {
+    background-color: #0ff;
+    box-shadow: 0 0 10px #0ff;
+}
+.results-section {
+    margin-top: 20px;
+    background-color: #111;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #0ff;
+}
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.result-item button {
+    width: auto;
+    padding: 4px 8px;
+    margin-left: 5px;
+    background-color: #f00;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.result-item button.editBtn {
+    background-color: #00f;
+}
+.chart-section {
+    margin-top: 30px;
+}
