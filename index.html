@@ -1,61 +1,72 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Farm Profit Tracker</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Farm Profit Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <!-- jsPDF & Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<div class="container">
-    <h1 id="title">Aplikasi Petani</h1>
+  <div class="container">
+    <h1 id="title">Farm Profit Tracker</h1>
 
-    <div class="lang-switch">
-        <label id="labelLang">Pilih Bahasa:</label>
-        <select id="langSelect">
-            <option value="id">Indonesia</option>
-            <option value="en">English</option>
-        </select>
+    <!-- Language Selector -->
+    <div class="lang-switcher">
+      <label for="langSelect" id="labelLang">Select Language:</label>
+      <select id="langSelect">
+        <option value="en">English</option>
+        <option value="id">Bahasa Indonesia</option>
+      </select>
     </div>
 
-    <div class="form-section">
-        <h3 id="accountSectionTitle">Buat / Pilih Akun Tanaman</h3>
-        <input type="text" id="cropName" placeholder="Nama Tanaman">
-        <input type="text" id="location" placeholder="Lokasi Tanaman (misal: Pekarangan Sambirejo)">
-        <button id="createAccountBtn">Buat Akun</button>
+    <!-- Account Section -->
+    <section id="accountSection">
+      <h2 id="accountSectionTitle">Create / Select Crop Account</h2>
+      <input type="text" id="cropName" placeholder="Crop Name">
+      <input type="text" id="location" placeholder="Crop Location">
+      <button id="createAccountBtn">Create Account</button>
+      <div id="accountsList"></div>
+    </section>
 
-        <h3 id="selectAccountTitle">Pilih Akun</h3>
-        <select id="accountSelect"></select>
-    </div>
+    <!-- Select Account -->
+    <section id="selectAccountSection">
+      <h2 id="selectAccountTitle">Select Account</h2>
+      <select id="accountSelect"></select>
+    </section>
 
-    <div class="form-section">
-        <h3 id="transactionSectionTitle">Tambah Transaksi</h3>
-        <select id="transactionType">
-            <option value="income">Pemasukan</option>
-            <option value="expense">Pengeluaran</option>
-        </select>
-        <input type="text" id="description" placeholder="Deskripsi">
-        <input type="number" id="amount" placeholder="Jumlah (IDR)">
-        <input type="date" id="date">
-        <button id="addTransactionBtn">Tambah Transaksi</button>
-    </div>
+    <!-- Transaction Section -->
+    <section id="transactionSection">
+      <h2 id="transactionSectionTitle">Add Transaction</h2>
+      <input type="date" id="dateInput">
+      <input type="text" id="description" placeholder="Description">
+      <input type="number" id="amount" placeholder="Amount (IDR)">
+      <select id="type">
+        <option value="income" id="optIncome">Income</option>
+        <option value="expense" id="optExpense">Expense</option>
+      </select>
+      <button id="addTransactionBtn">Add Transaction</button>
+    </section>
 
-    <div class="results-section">
-        <h2 id="profitTitle">Keuntungan</h2>
-        <div id="accountResults"></div>
-    </div>
+    <!-- Range Filter for PDF -->
+    <section id="rangeSection">
+      <h2>PDF Report Range</h2>
+      <label>From: <input type="date" id="startDate"></label>
+      <label>To: <input type="date" id="endDate"></label>
+      <button id="exportPDFBtn">Export PDF</button>
+    </section>
 
-    <div class="chart-section">
-        <h2 id="weeklyProfitTitle">Profit Mingguan</h2>
-        <canvas id="weeklyChart" height="150"></canvas>
-        <h2 id="monthlyProfitTitle">Profit Bulanan</h2>
-        <canvas id="monthlyChart" height="150"></canvas>
-    </div>
+    <!-- Results Section -->
+    <section id="resultsSection">
+      <h2 id="profitTitle">Profit</h2>
+      <div id="results"></div>
+      <canvas id="weeklyChart" width="400" height="200"></canvas>
+      <canvas id="monthlyChart" width="400" height="200"></canvas>
+    </section>
+  </div>
 
-    <button id="exportPDFBtn">Export PDF</button>
-</div>
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
