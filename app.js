@@ -29,7 +29,7 @@ function applyTranslations(lang){
 langSelect.addEventListener('change',(e)=>loadLang(e.target.value));
 loadLang(currentLang);
 
-// LocalStorage helper
+// LocalStorage helpers
 function getAccounts(){return JSON.parse(localStorage.getItem('accounts')||'[]');}
 function saveAccounts(data){localStorage.setItem('accounts',JSON.stringify(data));}
 
@@ -39,7 +39,7 @@ const addTransactionBtn=document.getElementById('addTransactionBtn');
 const accountResults=document.getElementById('accountResults');
 const exportPDFBtn=document.getElementById('exportPDFBtn');
 
-let editingAccount=null;
+let editingTransaction=null;
 
 // Create account
 createAccountBtn.addEventListener('click',()=>{
@@ -79,7 +79,13 @@ addTransactionBtn.addEventListener('click',()=>{
     const date=document.getElementById('date').value;
     if(!description||!amount||!date) return alert('Lengkapi semua transaksi');
     const accounts=getAccounts();
-    accounts[idx].transactions.push({type,description,amount,date});
+    if(editingTransaction){
+        const {accIdx,txIdx}=editingTransaction;
+        accounts[accIdx].transactions[txIdx]={type,description,amount,date};
+        editingTransaction=null;
+    } else {
+        accounts[idx].transactions.push({type,description,amount,date});
+    }
     saveAccounts(accounts);
     displayResults();
     clearTransactionForm();
@@ -89,27 +95,34 @@ addTransactionBtn.addEventListener('click',()=>{
 function displayResults(){
     const accounts=getAccounts();
     accountResults.innerHTML='';
-    accounts.forEach((a,accIdx)=>{
-        let profit=a.transactions.reduce((sum,t)=>sum+ (t.type==='income'?t.amount:-t.amount),0);
+    accounts.forEach((a, accIdx)=>{
+        let profit=a.transactions.reduce((sum,t)=>sum+(t.type==='income'?t.amount:-t.amount),0);
         const header=document.createElement('h3');
         header.innerText=`${a.cropName} - ${a.location} | Profit: ${profit} IDR`;
         accountResults.appendChild(header);
-        a.transactions.forEach((t,txIdx)=>{
-            const div=document.createElement('div');
-            div.classList.add('result-item');
-            div.innerHTML=`
-                <span>${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR</span>
-                <div>
-                    <button class="editBtn" onclick="editTransaction(${accIdx},${txIdx})">${translations[currentLang].editBtn}</button>
-                    <button onclick="deleteTransaction(${accIdx},${txIdx})">${translations[currentLang].deleteBtn}</button>
-                </div>`;
-            accountResults.appendChild(div);
-        });
+
+        if(a.transactions.length===0){
+            const p=document.createElement('p');
+            p.innerText='Belum ada transaksi';
+            accountResults.appendChild(p);
+        } else {
+            a.transactions.forEach((t,txIdx)=>{
+                const div=document.createElement('div');
+                div.classList.add('result-item');
+                div.innerHTML=`
+                    <span>${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR</span>
+                    <div>
+                        <button class="editBtn" onclick="editTransaction(${accIdx},${txIdx})">${translations[currentLang].editBtn}</button>
+                        <button onclick="deleteTransaction(${accIdx},${txIdx})">${translations[currentLang].deleteBtn}</button>
+                    </div>`;
+                accountResults.appendChild(div);
+            });
+        }
     });
     updateCharts();
 }
 
-// Edit/Delete transaction
+// Edit / Delete transaction
 function editTransaction(accIdx,txIdx){
     const accounts=getAccounts();
     const t=accounts[accIdx].transactions[txIdx];
@@ -117,7 +130,7 @@ function editTransaction(accIdx,txIdx){
     document.getElementById('description').value=t.description;
     document.getElementById('amount').value=t.amount;
     document.getElementById('date').value=t.date;
-    editingAccount={accIdx,txIdx};
+    editingTransaction={accIdx,txIdx};
 }
 function deleteTransaction(accIdx,txIdx){
     const accounts=getAccounts();
@@ -125,11 +138,12 @@ function deleteTransaction(accIdx,txIdx){
     saveAccounts(accounts);
     displayResults();
 }
+
 function clearTransactionForm(){
     document.getElementById('description').value='';
     document.getElementById('amount').value='';
     document.getElementById('date').value='';
-    editingAccount=null;
+    editingTransaction=null;
 }
 
 // Charts
@@ -151,8 +165,10 @@ function updateCharts(){
     const weeklyData=weeklyLabels.map(l=>weeklyProfits[l]);
     const monthlyLabels=Object.keys(monthlyProfits).sort();
     const monthlyData=monthlyLabels.map(l=>monthlyProfits[l]);
+
     if(weeklyChart) weeklyChart.destroy();
     if(monthlyChart) monthlyChart.destroy();
+
     weeklyChart=new Chart(document.getElementById('weeklyChart'),{
         type:'bar',
         data:{labels:weeklyLabels,datasets:[{label:'Profit IDR',data:weeklyData,backgroundColor:'#0ff'}]}
