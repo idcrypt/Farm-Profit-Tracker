@@ -25,9 +25,11 @@
     <!-- Account Section -->
     <section id="accountSection">
       <h2 id="accountSectionTitle">Create / Select Crop Account</h2>
-      <input type="text" id="cropName" placeholder="Crop Name">
-      <input type="text" id="location" placeholder="Crop Location">
-      <button id="createAccountBtn">Create Account</button>
+      <form id="accountForm">
+        <input type="text" id="cropName" placeholder="Crop Name" required>
+        <input type="text" id="location" placeholder="Crop Location" required>
+        <button type="submit" id="createAccountBtn">Create Account</button>
+      </form>
       <div id="accountsList"></div>
     </section>
 
@@ -40,14 +42,16 @@
     <!-- Transaction Section -->
     <section id="transactionSection">
       <h2 id="transactionSectionTitle">Add Transaction</h2>
-      <input type="date" id="dateInput">
-      <input type="text" id="description" placeholder="Description">
-      <input type="number" id="amount" placeholder="Amount (IDR)">
-      <select id="type">
-        <option value="income" id="optIncome">Income</option>
-        <option value="expense" id="optExpense">Expense</option>
-      </select>
-      <button id="addTransactionBtn">Add Transaction</button>
+      <form id="transactionForm">
+        <input type="date" id="dateInput" required>
+        <input type="text" id="description" placeholder="Description" required>
+        <input type="number" id="amount" placeholder="Amount (IDR)" required>
+        <select id="type" required>
+          <option value="income" id="optIncome">Income</option>
+          <option value="expense" id="optExpense">Expense</option>
+        </select>
+        <button type="submit" id="addTransactionBtn">Add Transaction</button>
+      </form>
     </section>
 
     <!-- Range Filter for PDF -->
