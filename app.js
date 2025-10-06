@@ -1,231 +1,245 @@
-let currentLang = 'id';
-const langSelect = document.getElementById('langSelect');
-let translations = {};
+// ===== Farm Profit Tracker =====
 
-// Deklarasi chart global di atas agar aman digunakan
+// Local Storage Helpers
+function getAccounts() {
+    return JSON.parse(localStorage.getItem("accounts") || "[]");
+}
+function saveAccounts(accounts) {
+    localStorage.setItem("accounts", JSON.stringify(accounts));
+}
+
+// Elements
+const accountForm = document.getElementById("account-form");
+const cropNameInput = document.getElementById("crop-name");
+const locationInput = document.getElementById("location");
+const accountsList = document.getElementById("accounts-list");
+const transactionForm = document.getElementById("transaction-form");
+const transactionAccount = document.getElementById("transaction-account");
+const transactionType = document.getElementById("transaction-type");
+const transactionAmount = document.getElementById("transaction-amount");
+const transactionDescription = document.getElementById("transaction-description");
+const transactionDate = document.getElementById("transaction-date");
+const resultsContainer = document.getElementById("results-container");
+const exportPDFBtn = document.getElementById("export-pdf");
+const startDateInput = document.getElementById("start-date");
+const endDateInput = document.getElementById("end-date");
+
+// Charts
 let weeklyChart = null;
 let monthlyChart = null;
 
-// Load language
-async function loadLang(lang) {
-    const res = await fetch(`lang/${lang}.json`);
-    translations[lang] = await res.json();
-    applyTranslations(lang);
-    currentLang = lang;
-}
-
-function applyTranslations(lang) {
-    const t = translations[lang];
-    document.getElementById('title').innerText = t.title;
-    document.getElementById('labelLang').innerText = t.labelLang;
-    document.getElementById('accountSectionTitle').innerText = t.accountSectionTitle;
-    document.getElementById('selectAccountTitle').innerText = t.selectAccountTitle;
-    document.getElementById('transactionSectionTitle').innerText = t.transactionSectionTitle;
-    document.getElementById('profitTitle').innerText = t.profitTitle;
-    document.getElementById('weeklyProfitTitle').innerText = t.weeklyProfitTitle;
-    document.getElementById('monthlyProfitTitle').innerText = t.monthlyProfitTitle;
-    document.getElementById('createAccountBtn').innerText = t.createAccountBtn;
-    document.getElementById('addTransactionBtn').innerText = t.addTransactionBtn;
-    document.getElementById('exportPDFBtn').innerText = t.exportPDFBtn;
-    document.getElementById('cropName').placeholder = t.cropName;
-    document.getElementById('location').placeholder = t.location;
-    document.getElementById('description').placeholder = t.description;
-    document.getElementById('amount').placeholder = t.amount;
-}
-
-langSelect.addEventListener('change', (e) => loadLang(e.target.value));
-loadLang(currentLang);
-
-// LocalStorage helpers
-function getAccounts() { return JSON.parse(localStorage.getItem('accounts') || '[]'); }
-function saveAccounts(data) { localStorage.setItem('accounts', JSON.stringify(data)); }
-
-const accountSelect = document.getElementById('accountSelect');
-const createAccountBtn = document.getElementById('createAccountBtn');
-const addTransactionBtn = document.getElementById('addTransactionBtn');
-const accountResults = document.getElementById('accountResults');
-const exportPDFBtn = document.getElementById('exportPDFBtn');
-
-let editingTransaction = null;
-
-// Create account
-createAccountBtn.addEventListener('click', () => {
-    const cropName = document.getElementById('cropName').value.trim();
-    const location = document.getElementById('location').value.trim();
-    if (!cropName || !location) return alert('Lengkapi nama tanaman & lokasi');
-
-    let accounts = getAccounts();
-    if (accounts.find(a => a.cropName === cropName && a.location === location)) {
-        alert('Akun sudah ada'); return;
-    }
-
-    accounts.push({ cropName, location, transactions: [] });
+// ===== Create Account =====
+accountForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const accounts = getAccounts();
+    accounts.push({
+        id: Date.now(),
+        cropName: cropNameInput.value,
+        location: locationInput.value,
+        transactions: []
+    });
     saveAccounts(accounts);
+    cropNameInput.value = "";
+    locationInput.value = "";
     loadAccounts();
-
-    // Pilih akun baru secara otomatis
-    accountSelect.value = accounts.length - 1;
 });
 
-// Load account dropdown
+// ===== Load Accounts =====
 function loadAccounts() {
     const accounts = getAccounts();
-    accountSelect.innerHTML = '';
-    accounts.forEach((a, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.text = `${a.cropName} - ${a.location}`;
-        accountSelect.add(opt);
+    accountsList.innerHTML = "";
+    transactionAccount.innerHTML = "";
+
+    accounts.forEach(a => {
+        // List display
+        const li = document.createElement("li");
+        li.textContent = `${a.cropName} - ${a.location}`;
+        accountsList.appendChild(li);
+
+        // Dropdown for transactions
+        const option = document.createElement("option");
+        option.value = a.id;
+        option.textContent = `${a.cropName} - ${a.location}`;
+        transactionAccount.appendChild(option);
     });
+
     displayResults();
 }
-loadAccounts();
 
-// Add transaction
-addTransactionBtn.addEventListener('click', () => {
-    const idx = parseInt(accountSelect.value);
-    if (isNaN(idx) || idx < 0 || idx >= getAccounts().length) return alert('Pilih akun dulu');
-
-    const type = document.getElementById('transactionType').value;
-    const description = document.getElementById('description').value.trim();
-    const amount = parseFloat(document.getElementById('amount').value);
-    const date = document.getElementById('date').value;
-    if (!description || !amount || !date) return alert('Lengkapi semua transaksi');
-
+// ===== Add Transaction =====
+transactionForm.addEventListener("submit", (e) => {
+    e.preventDefault();
     const accounts = getAccounts();
-    if (editingTransaction) {
-        const { accIdx, txIdx } = editingTransaction;
-        accounts[accIdx].transactions[txIdx] = { type, description, amount, date };
-        editingTransaction = null;
-    } else {
-        accounts[idx].transactions.push({ type, description, amount, date });
-    }
+    const accId = parseInt(transactionAccount.value);
+    const acc = accounts.find(a => a.id === accId);
+
+    acc.transactions.push({
+        id: Date.now(),
+        type: transactionType.value,
+        amount: parseFloat(transactionAmount.value),
+        description: transactionDescription.value,
+        date: transactionDate.value
+    });
+
     saveAccounts(accounts);
+    transactionAmount.value = "";
+    transactionDescription.value = "";
+    transactionDate.value = "";
+
     displayResults();
-    clearTransactionForm();
 });
 
-// Display results
+// ===== Display Results =====
 function displayResults() {
     const accounts = getAccounts();
-    accountResults.innerHTML = '';
+    resultsContainer.innerHTML = "";
 
-    accounts.forEach((a, accIdx) => {
-        let profit = a.transactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+    accounts.forEach(a => {
+        const div = document.createElement("div");
+        div.classList.add("account-result");
 
-        const header = document.createElement('h3');
-        header.innerText = `${a.cropName} - ${a.location} | Profit: ${profit} IDR`;
-        accountResults.appendChild(header);
+        let profit = a.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
 
-        if (a.transactions.length === 0) {
-            const p = document.createElement('p');
-            p.innerText = 'Belum ada transaksi';
-            accountResults.appendChild(p);
-        } else {
-            a.transactions.forEach((t, txIdx) => {
-                const div = document.createElement('div');
-                div.classList.add('result-item');
-                div.innerHTML = `
-                    <span>${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR</span>
-                    <div>
-                        <button class="editBtn" onclick="editTransaction(${accIdx},${txIdx})">${translations[currentLang].editBtn}</button>
-                        <button onclick="deleteTransaction(${accIdx},${txIdx})">${translations[currentLang].deleteBtn}</button>
-                    </div>`;
-                accountResults.appendChild(div);
-            });
-        }
+        div.innerHTML = `
+            <h3>${a.cropName} - ${a.location}</h3>
+            <p><strong>Total Profit/Loss:</strong> ${formatIDR(profit)}</p>
+            <ul>
+                ${a.transactions.map(t => `<li>${t.date} - ${t.type} - ${t.description}: ${formatIDR(t.amount)}</li>`).join("")}
+            </ul>
+        `;
+
+        resultsContainer.appendChild(div);
     });
 
     updateCharts();
 }
 
-// Edit / Delete transaction
-function editTransaction(accIdx, txIdx) {
-    const accounts = getAccounts();
-    const t = accounts[accIdx].transactions[txIdx];
-    document.getElementById('transactionType').value = t.type;
-    document.getElementById('description').value = t.description;
-    document.getElementById('amount').value = t.amount;
-    document.getElementById('date').value = t.date;
-    editingTransaction = { accIdx, txIdx };
-}
-
-function deleteTransaction(accIdx, txIdx) {
-    const accounts = getAccounts();
-    accounts[accIdx].transactions.splice(txIdx, 1);
-    saveAccounts(accounts);
-    displayResults();
-}
-
-function clearTransactionForm() {
-    document.getElementById('description').value = '';
-    document.getElementById('amount').value = '';
-    document.getElementById('date').value = '';
-    editingTransaction = null;
-}
-
-// Charts
+// ===== Charts =====
 function updateCharts() {
     const accounts = getAccounts();
-    const weeklyProfits = {}, monthlyProfits = {};
+    const allTx = accounts.flatMap(a => a.transactions);
 
-    accounts.forEach(a => {
-        a.transactions.forEach(t => {
-            const date = new Date(t.date);
-            const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate() + 1)/7)}`;
-            const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
-            const amt = t.type === 'income' ? t.amount : -t.amount;
-            weeklyProfits[weekKey] = (weeklyProfits[weekKey] || 0) + amt;
-            monthlyProfits[monthKey] = (monthlyProfits[monthKey] || 0) + amt;
-        });
+    // Group weekly
+    const weekly = {};
+    allTx.forEach(t => {
+        const week = getWeek(new Date(t.date));
+        weekly[week] = (weekly[week] || 0) + (t.type === "income" ? t.amount : -t.amount);
     });
 
-    const weeklyLabels = Object.keys(weeklyProfits).sort();
-    const weeklyData = weeklyLabels.map(l => weeklyProfits[l]);
-    const monthlyLabels = Object.keys(monthlyProfits).sort();
-    const monthlyData = monthlyLabels.map(l => monthlyProfits[l]);
+    // Group monthly
+    const monthly = {};
+    allTx.forEach(t => {
+        const month = t.date.slice(0, 7);
+        monthly[month] = (monthly[month] || 0) + (t.type === "income" ? t.amount : -t.amount);
+    });
 
+    const ctxW = document.getElementById("weeklyChart").getContext("2d");
     if (weeklyChart) weeklyChart.destroy();
-    if (monthlyChart) monthlyChart.destroy();
-
-    weeklyChart = new Chart(document.getElementById('weeklyChart'), {
-        type: 'bar',
-        data: { labels: weeklyLabels, datasets: [{ label: 'Profit IDR', data: weeklyData, backgroundColor: '#0ff' }] }
+    weeklyChart = new Chart(ctxW, {
+        type: "bar",
+        data: {
+            labels: Object.keys(weekly),
+            datasets: [{
+                label: "Weekly Profit/Loss",
+                data: Object.values(weekly),
+                backgroundColor: "#0ff"
+            }]
+        }
     });
 
-    monthlyChart = new Chart(document.getElementById('monthlyChart'), {
-        type: 'bar',
-        data: { labels: monthlyLabels, datasets: [{ label: 'Profit IDR', data: monthlyData, backgroundColor: '#ff0' }] }
+    const ctxM = document.getElementById("monthlyChart").getContext("2d");
+    if (monthlyChart) monthlyChart.destroy();
+    monthlyChart = new Chart(ctxM, {
+        type: "line",
+        data: {
+            labels: Object.keys(monthly),
+            datasets: [{
+                label: "Monthly Profit/Loss",
+                data: Object.values(monthly),
+                borderColor: "#f0f",
+                fill: false
+            }]
+        }
     });
 }
 
-// Export PDF
+// ===== Helpers =====
+function getWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return "W" + Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function formatIDR(num) {
+    return new Intl.NumberFormat("id-ID").format(num).replace(/\./g, ".").replace(",", ".") + ",- IDR";
+}
+
+// ===== Export PDF =====
 const { jsPDF } = window.jspdf;
-exportPDFBtn.addEventListener('click', () => {
+exportPDFBtn.addEventListener("click", () => {
     const accounts = getAccounts();
-    if (accounts.length === 0) return alert('No data to export');
+    if (accounts.length === 0) return alert("No data to export");
+
+    const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
+
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.setTextColor(0, 255, 255);
-    doc.text('Farm Profit Report', 105, 20, null, null, 'center');
+    doc.setTextColor(0, 0, 0);
+    doc.text("Farm Profit Report", 105, 20, null, null, "center");
     doc.setFontSize(12);
     let y = 30;
 
     accounts.forEach(a => {
-        let profit = a.transactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
-        doc.setTextColor(0, 255, 255);
-        doc.text(`${a.cropName} - ${a.location} | Profit: ${profit} IDR`, 10, y);
-        y += 6;
+        let filteredTx = a.transactions.filter(t => {
+            const tDate = new Date(t.date);
+            if (startDate && tDate < startDate) return false;
+            if (endDate && tDate > endDate) return false;
+            return true;
+        });
 
-        a.transactions.forEach(t => {
-            doc.setTextColor(255, 255, 255);
-            doc.text(`${t.date} | ${t.type} | ${t.description} | ${t.amount} IDR`, 10, y);
+        if (filteredTx.length === 0) return;
+
+        let profit = filteredTx.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
+
+        doc.setFontSize(14);
+        doc.text(`${a.cropName} - ${a.location}`, 10, y);
+        y += 8;
+
+        // Table Header
+        doc.setFontSize(11);
+        doc.text("Date", 10, y);
+        doc.text("Type", 40, y);
+        doc.text("Description", 80, y);
+        doc.text("Amount", 170, y, { align: "right" });
+        y += 6;
+        doc.line(10, y, 200, y);
+        y += 4;
+
+        // Table Rows
+        filteredTx.forEach(t => {
+            if (y > 270) { doc.addPage(); y = 20; }
+
+            doc.text(t.date, 10, y);
+            doc.text(t.type === "income" ? "Income" : "Expense", 40, y);
+            doc.text(t.description, 80, y);
+            doc.text(formatIDR(t.amount), 170, y, { align: "right" });
             y += 6;
-            if (y > 280) { doc.addPage(); y = 20; }
         });
 
         y += 4;
+        doc.line(10, y, 200, y);
+        y += 6;
+
+        doc.setFontSize(12);
+        doc.text(`Total Profit/Loss: ${formatIDR(profit)}`, 10, y);
+        y += 12;
     });
 
-    doc.save('Farm_Profit_Report.pdf');
+    doc.save("Farm_Profit_Report.pdf");
 });
+
+// ===== Init =====
+loadAccounts();
