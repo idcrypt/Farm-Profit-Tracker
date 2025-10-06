@@ -1,0 +1,15 @@
+{
+"title": "Farm Profit Tracker",
+"labelLang": "Select Language:",
+"profitTitle": "Profit",
+"weeklyProfitTitle": "Weekly Profit",
+"monthlyProfitTitle": "Monthly Profit",
+"cropName": "Crop Name",
+"seedPrice": "Seed Price (IDR)",
+"travelCost": "Travel Cost (IDR)",
+"harvestAmount": "Harvest Amount (Kg)",
+"harvestPrice": "Harvest Price/Kg (IDR)",
+"plantingDate": "Planting Date",
+"saveBtn": "Save Data",
+"profitResult": "Profit: IDR"
+}
