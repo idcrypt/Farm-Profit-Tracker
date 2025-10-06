@@ -5,11 +5,15 @@
 "weeklyProfitTitle": "Profit Mingguan",
 "monthlyProfitTitle": "Profit Bulanan",
 "cropName": "Nama Tanaman",
+"cropType": "Jenis Tanaman (misal: Sawi)",
 "seedPrice": "Harga Bibit (IDR)",
 "travelCost": "Biaya Perjalanan (IDR)",
 "harvestAmount": "Jumlah Panen (Kg)",
 "harvestPrice": "Harga Panen/Kg (IDR)",
 "plantingDate": "Tanggal Tanam",
 "saveBtn": "Simpan Data",
-"profitResult": "Keuntungan: IDR"
+"exportPDFBtn": "Export PDF",
+"profitResult": "Keuntungan: IDR",
+"editBtn": "Edit",
+"deleteBtn": "Hapus"
 }
