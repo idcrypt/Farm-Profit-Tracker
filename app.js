@@ -2,6 +2,10 @@ let currentLang = 'id';
 const langSelect = document.getElementById('langSelect');
 let translations = {};
 
+// Deklarasi chart global di atas agar aman digunakan
+let weeklyChart = null;
+let monthlyChart = null;
+
 // Load language
 async function loadLang(lang) {
     const res = await fetch(`lang/${lang}.json`);
@@ -161,7 +165,6 @@ function clearTransactionForm() {
 }
 
 // Charts
-let weeklyChart, monthlyChart;
 function updateCharts() {
     const accounts = getAccounts();
     const weeklyProfits = {}, monthlyProfits = {};
@@ -169,7 +172,7 @@ function updateCharts() {
     accounts.forEach(a => {
         a.transactions.forEach(t => {
             const date = new Date(t.date);
-            const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate() + 1) / 7)}`;
+            const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate() + 1)/7)}`;
             const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
             const amt = t.type === 'income' ? t.amount : -t.amount;
             weeklyProfits[weekKey] = (weeklyProfits[weekKey] || 0) + amt;
