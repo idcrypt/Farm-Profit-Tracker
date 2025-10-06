@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Profit Tracker</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1 id="title">Aplikasi Petani</h1>
+
+    <div class="lang-switch">
+        <label for="langSelect" id="labelLang">Pilih Bahasa:</label>
+        <select id="langSelect">
+            <option value="id">Indonesia</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
+    <div class="form-section">
+        <input type="text" id="cropName" placeholder="Nama Tanaman">
+        <input type="number" id="seedPrice" placeholder="Harga Bibit (IDR)">
+        <input type="number" id="travelCost" placeholder="Biaya Perjalanan (IDR)">
+        <input type="number" id="harvestAmount" placeholder="Jumlah Panen (Kg)">
+        <input type="number" id="harvestPrice" placeholder="Harga Panen/Kg (IDR)">
+        <input type="date" id="plantingDate" placeholder="Tanggal Tanam">
+
+        <button id="saveBtn">Simpan Data</button>
+        <button id="exportPDFBtn">Export PDF</button>
+    </div>
+
+    <div class="results-section">
+        <h2 id="profitTitle">Keuntungan</h2>
+        <div id="profitResults"></div>
+    </div>
+
+    <div class="chart-section">
+        <h2 id="weeklyProfitTitle">Profit Mingguan</h2>
+        <canvas id="weeklyChart" height="150"></canvas>
+        <h2 id="monthlyProfitTitle">Profit Bulanan</h2>
+        <canvas id="monthlyChart" height="150"></canvas>
+    </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
