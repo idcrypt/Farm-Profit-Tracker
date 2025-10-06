@@ -5,11 +5,15 @@
 "weeklyProfitTitle": "Weekly Profit",
 "monthlyProfitTitle": "Monthly Profit",
 "cropName": "Crop Name",
+"cropType": "Crop Type (e.g., Sawi)",
 "seedPrice": "Seed Price (IDR)",
 "travelCost": "Travel Cost (IDR)",
 "harvestAmount": "Harvest Amount (Kg)",
 "harvestPrice": "Harvest Price/Kg (IDR)",
 "plantingDate": "Planting Date",
 "saveBtn": "Save Data",
-"profitResult": "Profit: IDR"
+"exportPDFBtn": "Export PDF",
+"profitResult": "Profit: IDR",
+"editBtn": "Edit",
+"deleteBtn": "Delete"
 }
